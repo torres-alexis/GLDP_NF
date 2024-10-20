@@ -53,90 +53,36 @@ if ((params.glds && params.osd) || params.runsheet_path) {
     exit 0
 }
 
-// Import modules
+// Import modules and subworkflows
 include { FETCH_ISA } from './modules/fetch_isa.nf'
 include { ISA_TO_RUNSHEET } from './modules/isa_to_runsheet.nf'
-include { RAW_READS_HANDLING } from './modules/raw_reads_handling.nf'
-include { get_runsheet_paths } from './modules/parse_runsheet.nf'
+include { PARSE_RUNSHEET } from './modules/parse_runsheet.nf'
 
 // Main workflow
 workflow {
-
     // Set up channels
-    def ch_dp_tools_plugin = params.dp_tools_plugin ? 
+    ch_dp_tools_plugin = params.dp_tools_plugin ? 
         Channel.value(file(params.dp_tools_plugin)) : 
         Channel.value(file(params.mode == 'microbes' ? 
             "$projectDir/bin/dp_tools__NF_RCP_Bowtie2" : 
             "$projectDir/bin/dp_tools__NF_RCP"))
 
-    def ch_glds = params.glds ? Channel.value(params.glds) : null
-    def ch_osd = params.osd ? Channel.value(params.osd) : null
-    def ch_runsheet_path = params.runsheet_path ? Channel.fromPath(params.runsheet_path) : null
-
-    // Runsheet-based run
-    if (ch_runsheet_path) {
-        ch_runsheet = ch_runsheet_path
-    } else { // GLDS/OSD run
-        // Fetch ISA from OSDR
-        FETCH_ISA( ch_osd, ch_glds )
-        ch_isa = FETCH_ISA.out.isa_archive
-        
-        // Convert ISA to runsheet
-        ISA_TO_RUNSHEET( ch_glds, ch_isa, ch_dp_tools_plugin )
+    ch_glds = params.glds
+    ch_osd = params.osd
+    ch_runsheet = params.runsheet_path
+    ch_isa_archive = params.isa_archive_path
+    
+    // If no runsheet path, fetch ISA archive from OSDR (if needed) and convert to runsheet
+    if (ch_runsheet == null) {
+        if (ch_isa_archive == null) {
+            FETCH_ISA(ch_osd, ch_glds)
+            ch_isa_archive = FETCH_ISA.out.isa_archive
+        }
+        ISA_TO_RUNSHEET( ch_glds, ch_isa_archive, ch_dp_tools_plugin )
         ch_runsheet = ISA_TO_RUNSHEET.out.runsheet
     }
-    // Sample metadata structure
-    // meta = [
-    //     id: "Sample1",
-    //     organism_sci: "mus_musculus",
-    //     paired_end: true,
-    //     has_ercc: false,
-    //     factors: [
-    //         "Treatment": "Control",
-    //         "Time": "24h",
-    //         "Replicate": "1"
-    //     ]
-    // ]
-    ch_samples = ch_runsheet
-        | splitCsv(header: true)
-        | map { row -> get_runsheet_paths(row) }
-        | map { it -> params.force_single_end ? mutate_to_single_end(it) : it }
-        | take(params.limit_samples_to ?: -1)
 
-        // Uncomment to view the samples
-        // | view { meta, reads -> 
-        //     """
-        //     Sample ID: ${meta.id}
-        //     Organism: ${meta.organism_sci}
-        //     Paired End: ${meta.paired_end}
-        //     Has ERCC: ${meta.has_ercc}
-        //     Factors: ${meta.factors.collect { factor, value -> "${factor}: ${value}" }.join(', ')}
-        //     Read 1: ${reads[0]}
-        //     ${meta.paired_end ? "Read 2: ${reads[1]}" : ""}
-        //     ------------------------
-        //     """
-        // }
-        | set { ch_samples }
-
-    // Handle raw reads
-    // RAW_READS_HANDLING(
-    //     runsheet: ch_runsheet,
-    //     truncateTo: params.truncateTo,
-    //     force_single_end: params.force_single_end,
-    //     limitSamplesTo: params.limitSamplesTo,
-    //     stageLocal: params.stageLocal
-    // )
-
-    // Proceed with the rest of the workflow based on params.mode
-    // if (params.mode && params.mode == 'microbes') {
-    //     BOWTIE2_WORKFLOW(
-    //         runsheet: ch_runsheet,
-    //         raw_reads: RAW_READS_HANDLING.out.raw_reads
-    //     )
-    // } else {
-    //     STAR_WORKFLOW(
-    //         runsheet: ch_runsheet,
-    //         raw_reads: RAW_READS_HANDLING.out.raw_reads
-    //     )
-    // }
+    // Get sample metadata from runsheet
+    PARSE_RUNSHEET( ch_runsheet, params.force_single_end, params.limit_samples_to )
+    ch_samples = PARSE_RUNSHEET.out.samples
 }

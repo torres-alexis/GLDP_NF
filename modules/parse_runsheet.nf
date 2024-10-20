@@ -19,3 +19,41 @@ def get_runsheet_paths(LinkedHashMap row) {
     }
     return [meta, raw_reads]
 }
+
+def mutate_to_single_end(it) {
+  new_meta = it[0]
+  new_meta["paired_end"] = false
+  return [new_meta, it[1]]
+}
+
+workflow PARSE_RUNSHEET {
+    take:
+        ch_runsheet
+        force_single_end
+        limit_samples_to
+    
+    main:
+        ch_samples = ch_runsheet
+        | splitCsv(header: true)
+        | map { row -> get_runsheet_paths(row) }
+        | map { it -> force_single_end ? mutate_to_single_end(it) : it }
+        | take(limit_samples_to ?: -1)
+
+        // Uncomment to view the samples
+        // | view { meta, reads -> 
+        //     """
+        //     Sample ID: ${meta.id}
+        //     Organism: ${meta.organism_sci}
+        //     Paired End: ${meta.paired_end}
+        //     Has ERCC: ${meta.has_ercc}
+        //     Factors: ${meta.factors.collect { factor, value -> "${factor}: ${value}" }.join(', ')}
+        //     Read 1: ${reads[0]}
+        //     ${meta.paired_end ? "Read 2: ${reads[1]}" : ""}
+        //     ------------------------
+        //     """
+        // }
+        | set { ch_samples }
+
+    emit:
+    samples = ch_samples
+}
