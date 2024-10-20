@@ -58,20 +58,20 @@ include { ISA_TO_RUNSHEET } from './modules/isa_to_runsheet.nf'
 include { PARSE_RUNSHEET } from './workflows/parse_runsheet.nf'
 include { STAGE_RAW_READS } from './workflows/stage_raw_reads.nf'
 
+// Set up channels
+ch_dp_tools_plugin = params.dp_tools_plugin ? 
+    Channel.value(file(params.dp_tools_plugin)) : 
+    Channel.value(file(params.mode == 'microbes' ? 
+        "$projectDir/bin/dp_tools__NF_RCP_Bowtie2" : 
+        "$projectDir/bin/dp_tools__NF_RCP"))
+
+ch_glds = params.glds ? Channel.value(params.glds) : null
+ch_osd = params.osd ? Channel.value(params.osd) : null
+ch_runsheet = params.runsheet_path ? Channel.fromPath(params.runsheet_path) : null
+ch_isa_archive = params.isa_archive_path ? Channel.fromPath(params.isa_archive_path) : null
+
 // Main workflow
 workflow {
-    // Set up channels
-    ch_dp_tools_plugin = params.dp_tools_plugin ? 
-        Channel.value(file(params.dp_tools_plugin)) : 
-        Channel.value(file(params.mode == 'microbes' ? 
-            "$projectDir/bin/dp_tools__NF_RCP_Bowtie2" : 
-            "$projectDir/bin/dp_tools__NF_RCP"))
-
-    ch_glds = params.glds ? Channel.value(params.glds) : null
-    ch_osd = params.osd ? Channel.value(params.osd) : null
-    ch_runsheet = params.runsheet_path ? Channel.fromPath(params.runsheet_path) : null
-    ch_isa_archive = params.isa_archive_path ? Channel.fromPath(params.isa_archive_path) : null
-    
     // If no runsheet path, fetch ISA archive from OSDR (if needed) and convert to runsheet
     if (ch_runsheet == null) {
         if (ch_isa_archive == null) {
@@ -86,10 +86,18 @@ workflow {
     PARSE_RUNSHEET( ch_runsheet, params.force_single_end, params.limit_samples_to )
     ch_samples = PARSE_RUNSHEET.out.samples
 
-    //
-    // TODO : Take in read paths from runsheet as channel, regardless of whether they are local paths or URLs
-    //
-
     // Stage full or truncated raw reads 
     STAGE_RAW_READS( ch_samples, params.stage_local, params.truncate_to )
+
+    // Collect sample IDs into a file
+    STAGE_RAW_READS.out.raw_reads | map{ it -> it[1] } | collect | set { ch_all_raw_reads }
+    STAGE_RAW_READS.out.raw_reads | map { it[0].id }
+                          | collectFile(name: "samples.txt", sort: true, newLine: true)
+                          | set { ch_samples_txt }
+
+    // View the contents of ch_all_raw_reads
+    // ch_all_raw_reads.view { it -> "All raw reads: $it" }
+
+    // // View the contents of ch_samples_txt
+    // ch_samples_txt.view { it -> "Samples txt file: $it" }
 }
