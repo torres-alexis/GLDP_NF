@@ -22,14 +22,14 @@ def get_runsheet_paths(LinkedHashMap row) {
         [(key[13..-2]): value] // Remove "Factor Value[" and "]"
     }
 
-    // Create array of metadata and raw reads
+    def array = []
     def raw_reads = []
-    raw_reads.add(row.read1_path)
+    raw_reads.add(file(row.read1_path))
     if (meta.paired_end) {
-        raw_reads.add(row.read2_path)
-    }
-    
-    return [meta, raw_reads]
+        raw_reads.add(file(row.read2_path))
+      }
+    array = [meta, raw_reads]
+    return array
 }
 
 def mutate_to_single_end(it) {
@@ -49,15 +49,6 @@ workflow PARSE_RUNSHEET {
             | splitCsv(header: true)
             | map { row -> get_runsheet_paths(row) }
 
-        // Print autodetected processing metadata for the first sample
-        ch_samples.take(1) | view { meta, reads -> 
-            """${colorCodes.c_bright_green}Sample 1 Metadata:
-            Sample ID: ${meta.id}
-            Has ERCC: ${meta.has_ercc}
-            Paired End: ${meta.paired_end}
-            Organism: ${meta.organism_sci}
-            Read File(s): ${reads.join(', ')}${colorCodes.c_reset}"""
-        }
         // Validate consistency across samples
         ch_samples
             .map { meta, reads -> [meta.has_ercc, meta.paired_end, meta.organism_sci] }
@@ -71,6 +62,14 @@ workflow PARSE_RUNSHEET {
                     println "${colorCodes.c_bright_green}Metadata consistency check passed.${colorCodes.c_reset}"
                 }
             }
+
+        // Print autodetected processing metadata for the first sample
+        ch_samples.take(1) | view { meta, reads -> 
+            """${colorCodes.c_bright_green}Autodetected Processing Metadata:
+            Has ERCC: ${meta.has_ercc}
+            Paired End: ${meta.paired_end}
+            Organism: ${meta.organism_sci}${colorCodes.c_reset}"""
+        }
         // Check that all read files are unique
         ch_samples
             .flatMap { meta, reads -> reads }

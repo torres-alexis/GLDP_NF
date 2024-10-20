@@ -2,30 +2,36 @@ nextflow.enable.dsl=2
 
 workflow STAGE_RAW_READS {
     take:
-    ch_samples       // Channel of sample information
-    stage_local      // Boolean (placeholder for now)
-    truncate_to      // Integer or false (placeholder for now)
+        ch_samples
+        stageLocal
+        truncateTo
 
     main:
-    PRINT_SAMPLE_INFO(ch_samples)
+        STAGE_READS(ch_samples)
+
+    emit:
+        staged_reads = STAGE_READS.out.raw_reads
 }
 
-// Process to print sample information
-process PRINT_SAMPLE_INFO {
-    tag "${meta.id}"
+process STAGE_READS {
+    // Stages the raw reads into appropriate publish directory
+    tag "${ meta.id }"
 
     input:
-    tuple val(meta), val(reads)
+        tuple val(meta), path("?.gz")
 
-    // script:
-    // """
-    // """
-    exec:
-    println "Sample ID: ${meta.id}"
-    println "Organism: ${meta.organism_sci}"
-    println "Paired-end: ${meta.paired_end}"
-    println "Has ERCC: ${meta.has_ercc}"
-    println "Factors: ${meta.factors}"
-    println "Read files: ${reads}"
-    println "--------------------"
-}
+    output:
+        tuple val(meta), path("${meta.id}*.gz"), emit: raw_reads
+
+    script:
+        if ( meta.paired_end ) {
+        """
+        cp -P 1.gz ${meta.id}_R1_raw.fastq.gz
+        cp -P 2.gz ${meta.id}_R2_raw.fastq.gz
+        """
+        } else {
+        """
+        cp -P 1.gz  ${meta.id}_raw.fastq.gz
+        """
+        }
+    }
