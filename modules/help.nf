@@ -108,8 +108,8 @@ def showHelp(workflow) {
     --version
         Show pipeline version and exit.
 
-    --help_full
-        Show full help message and exit.
+    --stage_local
+        Whether to download the raw reads to the local filesystem. Default: true.
 
     Notes:
     -------

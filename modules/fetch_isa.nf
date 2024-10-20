@@ -2,7 +2,7 @@ process FETCH_ISA {
 
     tag "OSD-${osd}"
 
-    publishDir "${params.outdir}/GLDS-${glds}/Metadata",
+    publishDir params.glds ? "${params.outdir}/GLDS-${params.glds}/Metadata" : "${params.outdir}/Metadata",
         mode: params.publish_dir_mode
 
     input:
