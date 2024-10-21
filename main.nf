@@ -11,7 +11,6 @@ def colorCodes = [
     c_reset: "\033[0m"
 ]
 
-
 // Include the showHelp function from help.nf
 include { showHelp } from './modules/help.nf'
 // Only display the help message if --help parameter is specified
@@ -52,17 +51,13 @@ if ((params.glds && params.osd) || params.runsheet_path) {
     exit 0
 }
 
-include { STAGE_ANALYSIS } from './workflows/stage_analysis.nf'
-
+include { STAR_WORKFLOW } from './workflows/star_workflow.nf'
 
 // Main workflow
-// workflow {
-//     if (params.mode == 'microbes') {
-//         //BOWTIE2_WORKFLOW()
-//     } else {
-//         STAR_WORKFLOW()
-//     }
-// }
 workflow {
-    STAGE_ANALYSIS()
+    if (params.mode == 'microbes') {
+        //BOWTIE2_WORKFLOW()
+    } else {
+        STAR_WORKFLOW()
+    }
 }
