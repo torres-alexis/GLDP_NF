@@ -16,6 +16,9 @@ workflow STAGE_RAW_READS {
                    single: it.size() == 2
                  }
                  | set{ ch_raw_read_pointers }
+            
+            
+            // TO DO: Move the two splitFastq truncation steps into processes that run in parallel. Low priority since this is just for debugging.
 
             // PAIRED END
             // Only difference is the splitFastq arg 'pe'

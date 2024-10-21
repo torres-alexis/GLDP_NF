@@ -1,4 +1,3 @@
-
 include { STAGE_RAW_READS } from './stage_raw_reads.nf'
 include { FETCH_ISA } from '../modules/fetch_isa.nf'
 include { ISA_TO_RUNSHEET } from '../modules/isa_to_runsheet.nf'
@@ -60,6 +59,7 @@ workflow STAGE_ANALYSIS {
         // ch_samples_txt.view { it -> "Samples txt file: $it" }
 
     emit:
+        raw_reads = STAGE_RAW_READS.out.raw_reads
         ch_all_raw_reads
         ch_samples_txt
 }

@@ -39,14 +39,15 @@ if (params.limit_samples_to || params.truncate_to || params.force_single_end || 
 println("${colorCodes.c_reset}")
 
 // Check required parameters
-if ((params.glds && params.osd) || params.runsheet_path) {
+if ((params.glds && params.osd) || params.runsheet_path || params.isa_archive_path) {
     // Proceed
 } else {
     log.error """
-        Missing Required Parameters: You must provide either both --osd and --glds, or --runsheet_path.
+        Missing Required Parameters: You must provide either both --osd and --glds, or --runsheet_path, or --glds and --isa_archive_path.
         Examples:
           --osd 194 --glds 194
           --runsheet_path /path/to/runsheet.csv
+          --isa_archive_path /path/to/isa_archive.zip
     """
     exit 0
 }
