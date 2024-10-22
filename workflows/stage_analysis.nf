@@ -50,7 +50,7 @@ workflow STAGE_ANALYSIS {
         STAGE_RAW_READS.out.raw_reads | map{ it -> it[1] } | collect | set { ch_all_raw_reads }
         STAGE_RAW_READS.out.raw_reads | map { it[0].id }
                             | collectFile(name: "samples.txt", sort: true, newLine: true)
-                            | set { ch_samples_txt }
+                            | set { samples_txt }
 
         // View the contents of ch_all_raw_reads
         // ch_all_raw_reads.view { it -> "All raw reads: $it" }
@@ -60,6 +60,6 @@ workflow STAGE_ANALYSIS {
 
     emit:
         raw_reads = STAGE_RAW_READS.out.raw_reads
-        ch_all_raw_reads
-        ch_samples_txt
+        ch_all_raw_reads // unused so far 
+        samples_txt
 }

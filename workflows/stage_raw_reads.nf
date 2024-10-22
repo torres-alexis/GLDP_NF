@@ -53,6 +53,8 @@ workflow STAGE_RAW_READS {
 
 process STAGE_READS {
     // Stages the raw reads into appropriate publish directory
+    publishDir params.glds ? "${params.outdir}/GLDS-${params.glds}/00-RawData" : "${params.outdir}/00-RawData",
+        mode: params.publish_dir_mode
     tag "${ meta.id }"
 
     input:

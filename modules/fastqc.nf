@@ -24,9 +24,7 @@ process FASTQC {
         --memory $fastqc_memory \\
         $reads
 
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        fastqc: \$( fastqc --version | sed -e "s/FastQC v//g" )
-    END_VERSIONS
+    echo '"${task.process}":' > versions.yml
+    echo "    fastqc: \$(fastqc --version | sed -e 's/FastQC v//g')" >> versions.yml
     """
 }
